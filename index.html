@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pong Game</title>
+    <style>
+        canvas {
+            border: 1px solid #000;
+            display: block;
+            margin: 0 auto;
+        }
+        .scoreboard {
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .game-over {
+            font-size: 36px;
+            text-align: center;
+            margin-top: 100px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="pong" width="800" height="400"></canvas>
+    <script>
+        // Selecionar o elemento canvas
+        const canvas = document.getElementById("pong");
+        const context = canvas.getContext("2d");
+
+        // Variáveis para armazenar as informações do jogo
+        let pong = {
+            // Configurações iniciais
+            paddleWidth: 10,
+            paddleHeight: 100,
+            paddleSpeed: 20,
+            ballSpeed: 4,
+            ballRadius: 10,
+            maxScore: 5,
+
+            // Posições iniciais
+            paddle1Y: canvas.height / 2 - 50,
+            paddle2Y: canvas.height / 2 - 50,
+            ballX: canvas.width / 2,
+            ballY: canvas.height / 2,
+            ballDX: 1,
+            ballDY: 1,
+
+            // Pontuação inicial
+            player1Score: 0,
+            player2Score: 0,
+
+            // Estado de jogo
+            isGameOver: false,
+
+            // Função para resetar o jogo
+            reset: function () {
+                this.paddle1Y = canvas.height / 2 - this.paddleHeight / 2;
+                this.paddle2Y = canvas.height / 2 - this.paddleHeight / 2;
+                this.ballX = canvas.width / 2;
+                this.ballY = canvas.height / 2;
+                this.ballDX = 1;
+                this.ballDY = 1;
+                this.isGameOver = false;
+                this.ballSpeed = 4;
+                this.paddleSpeed = 8;
+            },
+
+            // Função para atualizar o estado do jogo
+            update: function () {
+                // Verificar se o jogo está pausado ou terminado
+                if (this.isGameOver) {
+                    return;
+                }
+
+                // Verificar colisão com as bordas verticais
+                if (this.paddle1Y < 0) this.paddle1Y = 0;
+                if (this.paddle1Y + this.paddleHeight > canvas.height) this.paddle1Y = canvas.height - this.paddleHeight;
+
+                // Movimento do computador (jogador 2)
+                // O computador segue a bola verticalmente
+                const computerSpeed = 5;
+                if (this.ballY < this.paddle2Y + this.paddleHeight / 2 && this.paddle2Y > 0) {
+                    this.paddle2Y -= computerSpeed;
+                }
+                if (this.ballY > this.paddle2Y + this.paddleHeight / 2 && this.paddle2Y + this.paddleHeight < canvas.height) {
+                    this.paddle2Y += computerSpeed;
+                }
+
+                // Verificar colisão com a bola
+                if (this.ballY - this.ballRadius < 0 || this.ballY + this.ballRadius > canvas.height) {
+                    this.ballDY = -this.ballDY;
+                    this.shakeScreen();
+                }
+
+                // Verificar colisão com as barras
+                if (
+                    this.ballX - this.ballRadius < this.paddleWidth &&
+                    this.ballY > this.paddle1Y &&
+                    this.ballY < this.paddle1Y + this.paddleHeight
+                ) {
+                    this.ballDX = -this.ballDX;
+                    this.ballDY = (this.ballY - (this.paddle1Y + this.paddleHeight / 2)) / (this.paddleHeight / 2);
+                    this.normalizeBallDirection();
+                    this.increaseBallSpeed();
+                    this.shakeScreen();
+                }
+
+                if (
+                    this.ballX + this.ballRadius > canvas.width - this.paddleWidth &&
+                    this.ballY > this.paddle2Y &&
+                    this.ballY < this.paddle2Y + this.paddleHeight
+                ) {
+                    this.ballDX = -this.ballDX;
+                    this.ballDY = (this.ballY - (this.paddle2Y + this.paddleHeight / 2)) / (this.paddleHeight / 2);
+                    this.normalizeBallDirection();
+                    this.increaseBallSpeed();
+                    this.shakeScreen();
+                }
+
+                // Verificar pontuação
+                if (this.ballX - this.ballRadius < 0) {
+                    this.player2Score++;
+                    this.reset();
+                }
+
+                if (this.ballX + this.ballRadius > canvas.width) {
+                    this.player1Score++;
+                    this.reset();
+                }
+
+                // Atualizar posição da bola
+                this.ballX += this.ballSpeed * this.ballDX;
+                this.ballY += this.ballSpeed * this.ballDY;
+
+                // Verificar fim de jogo
+                if (this.player1Score === this.maxScore || this.player2Score === this.maxScore) {
+                    this.isGameOver = true;
+                }
+            },
+
+            // Função para normalizar a direção da bola
+            normalizeBallDirection: function () {
+                const speed = Math.sqrt(this.ballDX * this.ballDX + this.ballDY * this.ballDY);
+                this.ballDX /= speed;
+                this.ballDY /= speed;
+            },
+
+            // Função para aumentar a velocidade da bola e da barra do computador
+            increaseBallSpeed: function () {
+                this.ballSpeed += 1;
+                this.paddleSpeed += 0.3;
+            },
+
+            // Função para tremer a tela
+            shakeScreen: function () {
+                canvas.style.transform = "translate(" + (Math.random() * 10 - 5) + "px, " + (Math.random() * 10 - 5) + "px)";
+                setTimeout(function () {
+                    canvas.style.transform = "translate(0, 0)";
+                }, 100);
+            },
+
+            // Função para desenhar os elementos na tela
+            draw: function () {
+                // Limpar a tela
+                context.fillStyle = "#000";
+                context.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Desenhar as barras
+                context.fillStyle = "#fff";
+                context.fillRect(this.paddleWidth, this.paddle1Y, this.paddleWidth, this.paddleHeight);
+                context.fillRect(
+                    canvas.width - this.paddleWidth * 2,
+                    this.paddle2Y,
+                    this.paddleWidth,
+                    this.paddleHeight
+                );
+
+                // Desenhar a bola
+                context.beginPath();
+                context.arc(this.ballX, this.ballY, this.ballRadius, 0, Math.PI * 2);
+                context.fillStyle = "#fff";
+                context.fill();
+
+                // Desenhar a pontuação
+                context.fillStyle = "#fff";
+                context.font = "24px Arial";
+                context.fillText("Player 1: " + this.player1Score, 50, 50);
+                context.fillText("Player 2: " + this.player2Score, canvas.width - 150, 50);
+
+                // Verificar se o jogo acabou
+                if (this.isGameOver) {
+                    context.font = "36px Arial";
+                    context.fillText("Game Over", canvas.width / 2 - 100, canvas.height / 2);
+                }
+            },
+        };
+
+        // Função para controlar as barras
+        function keyDownHandler(event) {
+            if (event.key === "w") {
+                pong.paddle1Y -= pong.paddleSpeed;
+            }
+            if (event.key === "s") {
+                pong.paddle1Y += pong.paddleSpeed;
+            }
+        }
+
+        // Função para atualizar o estado do jogo e redesenhar os elementos na tela
+        function updateGame() {
+            pong.update();
+            pong.draw();
+        }
+
+        // Associar o evento de pressionar teclas à função de controle das barras
+        document.addEventListener("keydown", keyDownHandler);
+
+        // Loop do jogo
+        setInterval(updateGame, 10);
+    </script>
+</body>
+</html>
